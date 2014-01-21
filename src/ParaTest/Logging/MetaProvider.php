@@ -49,9 +49,11 @@ abstract class MetaProvider
      */
     protected function getNumericValue($property)
     {
-       return ($property === 'time') 
-              ? floatval($this->suites[0]->$property)
-              : intval($this->suites[0]->$property);
+	   $data = array_reduce($this->suites, function($result, $suite) use ($property) {
+			return $result + $suite->$property;
+	   });
+	   
+       return ($property === 'time') ? floatval($data) : intval($data);
     }
 
     /**
@@ -63,8 +65,8 @@ abstract class MetaProvider
     protected function getMessages($type)
     {
         $messages = array();
-        $suites = $this->isSingle ? $this->suites : $this->suites[0]->suites;
-        foreach($suites as $suite)
+        
+        foreach($this->allSuites as $suite)
             $messages = array_merge($messages, array_reduce($suite->cases, function($result, $case) use($type) {
                 return array_merge($result, array_reduce($case->$type, function($msgs, $msg) { 
                     $msgs[] = $msg['text'];

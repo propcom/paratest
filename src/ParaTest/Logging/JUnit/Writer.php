@@ -78,12 +78,12 @@ class Writer
     public function getXml()
     {
         $suites = $this->interpreter->flattenCases();
-        $root = $this->getSuiteRoot($suites);
+        $root = $this->getSuiteRoot();
+		
         foreach($suites as $suite) {
             $snode = $this->appendSuite($root, $suite);
-            foreach($suite->cases as $case)
-                $cnode = $this->appendCase($snode, $case);
         }
+		
         return $this->document->saveXML();
     }
 
@@ -114,6 +114,15 @@ class Writer
                 $suiteNode->setAttribute($name, $value);
         }
         $root->appendChild($suiteNode);
+		
+		foreach($suite->suites as $childSuite) {
+			$this->appendSuite($suiteNode, $childSuite);
+		}
+		
+		foreach($suite->cases as $childCase) {
+			$this->appendCase($suiteNode, $childCase);
+		}
+		
         return $suiteNode;
     }
 
@@ -154,40 +163,15 @@ class Writer
     }
 
     /**
-     * Get the root level testsuite node
+     * Get the root level testsuites node
      *
      * @param $suites
      * @return \DOMElement
      */
-    protected function getSuiteRoot($suites)
+    protected function getSuiteRoot()
     {
         $testsuites = $this->document->createElement("testsuites");
         $this->document->appendChild($testsuites);
-        if(sizeof($suites) == 1) return $testsuites;
-        $rootSuite = $this->document->createElement('testsuite');
-        $attrs = $this->getSuiteRootAttributes($suites);
-        foreach($attrs as $attr => $value)
-            $rootSuite->setAttribute($attr, $value);
-        $testsuites->appendChild($rootSuite);
-        return $rootSuite;
-    }
-
-    /**
-     * Get the attributes used on the root testsuite
-     * node
-     *
-     * @param $suites
-     * @return mixed
-     */
-    protected function getSuiteRootAttributes($suites)
-    {
-        return array_reduce($suites, function($result, $suite){
-            $result['tests'] += $suite->tests;
-            $result['assertions'] += $suite->assertions;
-            $result['failures'] += $suite->failures;
-            $result['errors'] += $suite->errors;
-            $result['time'] += $suite->time;
-            return $result;
-        }, array_merge(array('name' => $this->name), self::$defaultSuite));
+        return $testsuites;
     }
 }

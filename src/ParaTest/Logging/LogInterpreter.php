@@ -13,6 +13,18 @@ class LogInterpreter extends MetaProvider
      * @var array
      */
     protected $readers = array();
+	
+	/**
+	 * An array of root suites
+     * @var array
+     */
+    protected $suites = array();
+	
+	/**
+	 * An array of all suites
+     * @var array
+     */
+    protected $allSuites = array();
 
     /**
      * Reset the array pointer of the internal
@@ -33,8 +45,54 @@ class LogInterpreter extends MetaProvider
     public function addReader(Reader $reader)
     {
         $this->readers[] = $reader;
+		
+		$this->mergeSuites($reader->getSuites());
+		
         return $this;
     }
+	
+	/**
+     * Recursively merge multiple nested suites
+     *
+     * @param $parentSuites
+	 * @param TestSuit $newParent
+     */
+	protected function mergeSuites($parentSuites, $newParent=null) {
+	
+		// Loop through parent's suites
+		foreach($parentSuites as $path=>$suite) {
+			// Create new blank suite, if path doesn't already exist
+			if(!isset($this->allSuites[$path])) {
+				$this->allSuites[$path] = new TestSuite($suite->name, 0, 0, 0, 0, 0);
+				
+				// Save root suite
+				if(!$newParent) {
+					$this->suites[$path] = $this->allSuites[$path];
+				}
+			}
+			
+			// Add suite to parent
+			if($newParent && !isset($newParent->suites[$path])) {
+				$newParent->suites[$path] = $this->allSuites[$path];
+			}
+			
+			// Add cases to new suite
+			foreach($suite->cases as $case) {
+				$this->allSuites[$path]->cases[] = $case;
+			}
+			
+			// Merge child suites
+			$this->mergeSuites($suite->suites, $this->allSuites[$path]);
+			
+			// Update stats of new suite
+			$this->allSuites[$path]->tests += $suite->tests;
+			$this->allSuites[$path]->assertions += $suite->assertions;
+			$this->allSuites[$path]->failures += $suite->failures;
+			$this->allSuites[$path]->errors += $suite->errors;
+			$this->allSuites[$path]->time += $suite->time;
+			$this->allSuites[$path]->file = $suite->file;
+		}
+	}
 
     /**
      * Return all Reader objects associated
@@ -69,13 +127,9 @@ class LogInterpreter extends MetaProvider
     public function getCases()
     {
         $cases = array();
-        while(list( , $reader) = each($this->readers)) {
-            foreach($reader->getSuites() as $suite) {
-                $cases = array_merge($cases, $suite->cases);
-                while(list( , $nested) = each($suite->suites))
-                    $cases = array_merge($cases, $nested->cases);
-            }
-        }
+		foreach($this->allSuites as $suite) {
+			$cases = array_merge($cases, $suite->cases);
+		}
         return $cases;
     }
 
@@ -85,18 +139,7 @@ class LogInterpreter extends MetaProvider
      */
     public function flattenCases()
     {
-        $dict = array();
-        foreach($this->getCases() as $case) {
-            if(!isset($dict[$case->file])) $dict[$case->file] = new TestSuite($case->class, 0, 0, 0, 0, 0);
-            $dict[$case->file]->cases[] = $case;
-            $dict[$case->file]->tests += 1;
-            $dict[$case->file]->assertions += $case->assertions;
-            $dict[$case->file]->failures += sizeof($case->failures);
-            $dict[$case->file]->errors += sizeof($case->errors);
-            $dict[$case->file]->time += $case->time;
-            $dict[$case->file]->file = $case->file;
-        }
-        return array_values($dict);
+		return $this->suites;
     }
 
     /**
