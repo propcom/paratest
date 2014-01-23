@@ -42,6 +42,16 @@ class TestCase
     public $time;
 
     /**
+     * @var string
+     */
+    public $stdout = '';
+
+    /**
+     * @var string
+     */
+    public $stderr = '';
+
+    /**
      * Number of failures in this test case
      *
      * @var array
@@ -124,6 +134,10 @@ class TestCase
             $case->addFailure((string)$fail['type'], (string)$fail);
         while(list( , $err) = each($errors))
             $case->addError((string)$err['type'], (string)$err);
+        if(isset($node->{'system-out'}))
+            $case->stdout = (string)$node->{'system-out'};
+        if(isset($node->{'system-err'}))
+            $case->stderr = (string)$node->{'system-err'};
         return $case;
     }
 }

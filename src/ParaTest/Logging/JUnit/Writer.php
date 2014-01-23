@@ -143,6 +143,10 @@ class Writer
         $suiteNode->appendChild($caseNode);
         $this->appendDefects($caseNode, $case->failures, 'failure');
         $this->appendDefects($caseNode, $case->errors, 'error');
+        if($case->stdout !== '')
+            $caseNode->appendChild($this->document->createElement('system-out', $case->stdout));
+        if($case->stderr !== '')
+            $caseNode->appendChild($this->document->createElement('system-err', $case->stderr));
         return $caseNode;
     }
 
